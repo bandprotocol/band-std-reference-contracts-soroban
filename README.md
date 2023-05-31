@@ -1,1 +1,1 @@
-# -band-std-reference-contracts-soroban
+# band-std-reference-contracts-soroban
