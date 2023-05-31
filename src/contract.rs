@@ -1,8 +1,7 @@
-use soroban_sdk::{contractimpl, Address, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{Address, BytesN, contractimpl, Env, Symbol, Vec};
 
 use crate::admin::{has_admin, read_admin, write_admin};
 use crate::constant::StandardReferenceError;
-use crate::event;
 use crate::ref_data::{read_ref_data, RefData};
 use crate::reference_data::ReferenceData;
 use crate::relayer::{add_relayers, is_relayer, remove_relayers};
@@ -80,8 +79,6 @@ impl StandardReferenceTrait for StandardReference {
         // Transfer admin and revoke relayer status
         write_admin(&env, &new_admin);
         remove_relayers(&env, &Vec::from_array(&env, [new_admin.clone()]));
-
-        event::transfer_admin(&env, &current_admin, &new_admin);
     }
 
     fn is_relayer(env: Env, address: Address) -> bool {
@@ -94,9 +91,6 @@ impl StandardReferenceTrait for StandardReference {
         read_admin(&env).require_auth();
 
         add_relayers(&env, &addresses);
-
-        // emit event
-        // event::add_relayers(&env, *addrs);
     }
 
     // Removes the given addresses from the relayers list.
@@ -106,9 +100,6 @@ impl StandardReferenceTrait for StandardReference {
 
         // Remove relayers
         remove_relayers(&env, &addresses);
-
-        // emit event
-        // event::remove_relayers(&env, addrs);
     }
 
     // Relays the symbol rates to the contract. The caller must be a relayer.
@@ -214,9 +205,9 @@ impl StandardReferenceTrait for StandardReference {
 
 #[cfg(test)]
 mod tests {
-    use crate::constant::StandardReferenceError;
-    use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec};
+    use soroban_sdk::{Address, Env, Symbol, testutils::Address as _, Vec};
 
+    use crate::constant::StandardReferenceError;
     use crate::contract::StandardReference;
     use crate::reference_data::ReferenceData;
     use crate::StandardReferenceClient;

@@ -25,11 +25,10 @@ impl ReferenceData {
 
     pub fn from_ref_data(base: RefData, quote: RefData) -> Option<Self> {
         let rate = (base.rate as u128).checked_mul(E18 as u128).unwrap().checked_div(quote.rate as u128);
-        
         if rate.is_none() {
             return None;
         }
-        
+
         Some(ReferenceData {
             rate: rate.unwrap(),
             last_updated_base: base.resolve_time,
