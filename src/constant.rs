@@ -1,6 +1,6 @@
 use soroban_sdk::contracterror;
 
-pub(crate) const E9: u64 = 1_000_000_000_000_000_000;
+pub(crate) const E9: u64 = 1_000_000_000;
 pub(crate) const E18: u64 = 1_000_000_000_000_000_000;
 
 #[contracterror]
