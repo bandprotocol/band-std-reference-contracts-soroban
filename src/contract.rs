@@ -205,9 +205,11 @@ impl StandardReferenceTrait for StandardReference {
 
 #[cfg(test)]
 mod tests {
+    use core::ops::Mul;
+
     use soroban_sdk::{Address, Env, Symbol, testutils::Address as _, Vec};
 
-    use crate::constant::StandardReferenceError;
+    use crate::constant::{E9, StandardReferenceError};
     use crate::contract::StandardReference;
     use crate::reference_data::ReferenceData;
     use crate::StandardReferenceClient;
@@ -366,9 +368,9 @@ mod tests {
         let expected = Vec::from_array(
             &env,
             [
-                ReferenceData::new(1_000_000_000_000u128, 1000u64, 0u64),
-                ReferenceData::new(9_999_000_000_000u128, 1000u64, 0u64),
-                ReferenceData::new(1_234_000_000_000u128, 1000u64, 0u64),
+                ReferenceData::new(1_000_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
+                ReferenceData::new(9_999_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
+                ReferenceData::new(1_234_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
             ],
         );
         assert_eq!(expected, actual);
@@ -384,9 +386,9 @@ mod tests {
         let expected = Vec::from_array(
             &env,
             [
-                ReferenceData::new(1_000_000_000u128, 1337u64, 0u64),
-                ReferenceData::new(6_900_000_000_000u128, 1337u64, 0u64),
-                ReferenceData::new(4_321_000_000_000u128, 1337u64, 0u64),
+                ReferenceData::new(1_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
+                ReferenceData::new(6_900_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
+                ReferenceData::new(4_321_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
             ],
         );
         assert_eq!(expected, actual);
@@ -436,9 +438,9 @@ mod tests {
         let expected = Vec::from_array(
             &env,
             [
-                ReferenceData::new(1_000_000_000u128, 1u64, 0u64),
-                ReferenceData::new(6_900_000_000_000u128, 1u64, 0u64),
-                ReferenceData::new(4_321_000_000_000u128, 1u64, 0u64),
+                ReferenceData::new(1_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
+                ReferenceData::new(6_900_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
+                ReferenceData::new(4_321_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
             ],
         );
         assert_eq!(expected, actual);
