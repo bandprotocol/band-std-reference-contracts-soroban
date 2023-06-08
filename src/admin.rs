@@ -3,6 +3,7 @@ use soroban_sdk::{Address, Env};
 use crate::storage_types::DataKey;
 
 pub fn read_admin(env: &Env) -> Address {
+    // This admin key has been set by owner and not expect to fail
     env.storage().get_unchecked(&DataKey::Admin).unwrap()
 }
 

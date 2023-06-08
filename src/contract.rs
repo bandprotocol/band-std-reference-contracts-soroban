@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, BytesN, contractimpl, Env, Symbol, Vec};
+use soroban_sdk::{contractimpl, Address, BytesN, Env, Symbol, Vec};
 
 use crate::admin::{has_admin, read_admin, write_admin};
 use crate::constant::StandardReferenceError;
@@ -180,24 +180,11 @@ impl StandardReferenceTrait for StandardReference {
     ) -> Result<Vec<ReferenceData>, StandardReferenceError> {
         let mut reference_data = Vec::new(&env);
         for symbol_pair in symbol_pairs.iter() {
-            if let Ok((base, quote)) = symbol_pair {
-                let base_ref = read_ref_data(&env, base);
-                let quote_ref = read_ref_data(&env, quote);
-
-                match (base_ref, quote_ref) {
-                    (Ok(b), Ok(q)) => {
-                        if let Some(r) = ReferenceData::from_ref_data(b, q) {
-                            reference_data.push_back(r)
-                        } else {
-                            return Err(StandardReferenceError::DivisionError);
-                        }
-                    }
-                    (Err(e), _) => return Err(e),
-                    (_, Err(e)) => return Err(e),
-                }
-            } else {
-                return Err(StandardReferenceError::InvalidSymbolPairError);
-            }
+            let (base, quote) =
+                symbol_pair.map_err(|_| StandardReferenceError::InvalidSymbolPairError)?;
+            let base_ref = read_ref_data(&env, base)?;
+            let quote_ref = read_ref_data(&env, quote)?;
+            reference_data.push_back(ReferenceData::from_ref_data(base_ref, quote_ref)?);
         }
         Ok(reference_data)
     }
@@ -207,9 +194,9 @@ impl StandardReferenceTrait for StandardReference {
 mod tests {
     use core::ops::Mul;
 
-    use soroban_sdk::{Address, Env, Symbol, testutils::Address as _, Vec};
+    use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec};
 
-    use crate::constant::{E9, StandardReferenceError};
+    use crate::constant::{StandardReferenceError, E9};
     use crate::contract::StandardReference;
     use crate::reference_data::ReferenceData;
     use crate::StandardReferenceClient;

@@ -11,10 +11,7 @@ pub fn is_relayer(env: &Env, address: &Address) -> bool {
 pub fn add_relayers(env: &Env, addrs: &Vec<Address>) {
     for addr_res in addrs.iter() {
         if let Ok(addr) = addr_res {
-            let key = &DataKey::Relayer(addr.clone());
-            if !env.storage().has(key) {
-                env.storage().set(key, &());
-            }
+            env.storage().set(&DataKey::Relayer(addr.clone()), &());
         }
     }
 }
