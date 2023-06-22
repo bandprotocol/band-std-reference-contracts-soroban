@@ -31,7 +31,7 @@ impl ReferenceData {
             .ok_or(StandardReferenceError::ArithmeticError)?;
 
         Ok(ReferenceData {
-            rate: rate,
+            rate,
             last_updated_base: base.resolve_time,
             last_updated_quote: quote.resolve_time,
         })

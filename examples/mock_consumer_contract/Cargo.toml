@@ -2,15 +2,12 @@
 crate-type = ["cdylib"]
 
 [package]
-name = "std-reference"
+name = "mock-consumer"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 soroban-sdk = "0.8.4"
-
-[dev-dependencies]
-soroban-sdk = { version = "0.8.4", features = ["testutils"] }
 
 [profile.release]
 opt-level = "z"
