@@ -10,8 +10,9 @@ pub const VERSION: u32 = 1;
 
 pub trait StandardReferenceTrait {
     fn init(env: Env, admin_addr: Address);
-    fn version() -> u32;
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>);
+    fn version() -> u32;
+    fn address(env: Env) -> Address;
     fn current_admin(env: Env) -> Address;
     fn transfer_admin(env: Env, new_admin: Address);
     fn is_relayer(env: Env, address: Address) -> bool;
@@ -32,6 +33,8 @@ pub trait StandardReferenceTrait {
         request_id: u64,
     );
     fn delist(env: Env, from: Address, symbols: Vec<Symbol>);
+    fn get_ref_data(env: Env, symbols: Vec<Symbol>)
+        -> Result<Vec<RefData>, StandardReferenceError>;
     fn get_reference_data(
         env: Env,
         symbol_pair: Vec<(Symbol, Symbol)>,
@@ -53,12 +56,13 @@ impl StandardReferenceTrait for StandardReference {
         add_relayers(&env, &Vec::from_slice(&env, &[admin_addr]));
     }
 
-    fn version() -> u32 {
-        VERSION
-    }
-
     // Upgrade upgrades the contract to the new wasm code at the given wasm hash.
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         // Check that the caller is the admin
         let admin = read_admin(&env);
         admin.require_auth();
@@ -66,12 +70,29 @@ impl StandardReferenceTrait for StandardReference {
         env.update_current_contract_wasm(&new_wasm_hash)
     }
 
+    fn version() -> u32 {
+        VERSION
+    }
+
+    fn address(env: Env) -> Address {
+        env.current_contract_address()
+    }
+
     fn current_admin(env: Env) -> Address {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
         read_admin(&env)
     }
 
     // Transfers the admin to the new admin address and revokes relayer status from the old admin.
     fn transfer_admin(env: Env, new_admin: Address) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         // Check that the caller is the admin
         let current_admin = read_admin(&env);
         current_admin.require_auth();
@@ -82,11 +103,21 @@ impl StandardReferenceTrait for StandardReference {
     }
 
     fn is_relayer(env: Env, address: Address) -> bool {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         is_relayer(&env, &address)
     }
 
     // Adds the given addresses to the relayers list.
     fn add_relayers(env: Env, addresses: Vec<Address>) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         // Check that the caller is the admin
         read_admin(&env).require_auth();
 
@@ -95,6 +126,11 @@ impl StandardReferenceTrait for StandardReference {
 
     // Removes the given addresses from the relayers list.
     fn remove_relayers(env: Env, addresses: Vec<Address>) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         // Check that the caller is the admin
         read_admin(&env).require_auth();
 
@@ -110,6 +146,11 @@ impl StandardReferenceTrait for StandardReference {
         resolve_time: u64,
         request_id: u64,
     ) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         // Check that the caller is a relayer
         if !is_relayer(&env, &from) {
             panic!("Not a relayer");
@@ -139,6 +180,11 @@ impl StandardReferenceTrait for StandardReference {
         resolve_time: u64,
         request_id: u64,
     ) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         // Check that the caller is a relayer
         if !is_relayer(&env, &from) {
             panic!("Not a relayer");
@@ -161,6 +207,11 @@ impl StandardReferenceTrait for StandardReference {
     }
 
     fn delist(env: Env, from: Address, symbols: Vec<Symbol>) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
         // Check that the caller is a relayer
         if !is_relayer(&env, &from) {
             panic!("Not a relayer");
@@ -174,10 +225,39 @@ impl StandardReferenceTrait for StandardReference {
         }
     }
 
+    fn get_ref_data(
+        env: Env,
+        symbols: Vec<Symbol>,
+    ) -> Result<Vec<RefData>, StandardReferenceError> {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            return Err(StandardReferenceError::NotInitializedError);
+        }
+
+        let mut ref_data = Vec::new(&env);
+        for symbol in symbols.iter() {
+            if let Ok(symbol) = symbol {
+                if let Ok(r) = read_ref_data(&env, symbol) {
+                    ref_data.push_back(r)
+                } else {
+                    return Err(StandardReferenceError::NoRefDataError);
+                }
+            } else {
+                return Err(StandardReferenceError::InvalidSymbolError);
+            }
+        }
+        Ok(ref_data)
+    }
+
     fn get_reference_data(
         env: Env,
         symbol_pairs: Vec<(Symbol, Symbol)>,
     ) -> Result<Vec<ReferenceData>, StandardReferenceError> {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            return Err(StandardReferenceError::NotInitializedError);
+        }
+
         let mut reference_data = Vec::new(&env);
         for symbol_pair in symbol_pairs.iter() {
             let (base, quote) =

@@ -1,6 +1,6 @@
 use soroban_sdk::{contracttype, Env, Symbol};
 
-use crate::constant::{E9, StandardReferenceError};
+use crate::constant::{StandardReferenceError, E9};
 use crate::storage_types::DataKey;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
