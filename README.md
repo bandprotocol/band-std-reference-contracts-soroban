@@ -77,7 +77,7 @@ The `RefData` struct has the following fields:
 
 This function is intended for obtaining reference data rate with Quote asset as USD.
 
-```rust!
+```rust
 fn get_ref_data(env: Env, symbols: Vec<Symbol>) -> 
 Result<Vec<RefData>, StandardReferenceError>
 ```
@@ -110,7 +110,7 @@ The `ReferenceData` struct has the following fields:
 
 This function is used for obtaining the reference data rate by specifying both Base and Quote assets.
 
-```rust!
+```rust
 fn get_reference_data(
         env: Env,
         symbol_pairs: Vec<(Symbol, Symbol)>,
@@ -136,7 +136,7 @@ The mock consumer contract provides the following functionality:
 
 For example, if we want to query the price of BTC/USD, the demo contract below shows how this can be done.
 
-```rust!
+```rust
 #![no_std]
 
 use soroban_sdk::{contractimpl, contracttype, Address, Env, Symbol, Vec};
