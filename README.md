@@ -4,8 +4,8 @@ This repository contains a Rust implementation of the Band `StandardReference` S
 
 ## Components
 There are 2 key components in this repository:
-1. `src/contract.rs`: contains core `StandardReference` contract functionality
-2. `examples/mock_consumer_contract/src/lib.rs`: contains an example implementation of a contract which uses the prices from the `StandardReference` contract.
+1. [`src/contract.rs`](https://github.com/bandprotocol/band-std-reference-contracts-soroban/blob/main/src/contract.rs): contains core `StandardReference` contract functionality
+2. [`examples/mock_consumer_contract/src/lib.rs`](https://github.com/bandprotocol/band-std-reference-contracts-soroban/blob/main/examples/mock_consumer_contract/src/lib.rs): contains an example implementation of a contract which uses the prices from the `StandardReference` contract.
 
 ## Standard Reference Contract
 
@@ -46,15 +46,26 @@ The code includes a set of unit tests in the `tests` module. These tests cover v
 ### Usage
 
 There are three types of players: admin, relayer and consumer. 
-- The admin has the authority to assign and revoke admin and relayer roles from any addresses. 
-- The relayer is responsible for relaying the prices or data from BandChain to `StandardReference` contract via the `relay` and `force_relay` functions. The admin and relayer roles will be maintained by Band Protocol.
-- The consumer retrieves the prices for supported symbols via the `get_ref_data` and `get_reference_data` functions. Please refer to `MockConsumer` contract for guidance. 
+1. The admin has the authority to assign and revoke admin and relayer roles from any addresses. 
+2. The relayer is responsible for relaying the prices or data from BandChain to `StandardReference` contract via the `relay` and `force_relay` functions. The admin and relayer roles will be maintained by Band Protocol.
+3. The consumer retrieves the prices for supported symbols via the `get_ref_data` and `get_reference_data` functions. Please refer to `MockConsumer` contract for guidance. 
+
+
+
 
 ### RefData and ReferenceData
 
-#### RefData
+#### [RefData](https://github.com/bandprotocol/band-std-reference-contracts-soroban/blob/main/src/ref_data.rs)
 
-The `RefData` struct is used to store reference data for a specific symbol pair. It includes information such as the rate, resolve time, and request ID for a specific symbol. This function is intended for obtaining reference data rate with quote asset as USD. See `src/ref_data.rs`.
+The `RefData` struct is used to store reference data for a specific symbol pair. It includes information such as the rate, resolve time, and request ID for a specific symbol.
+
+```rust    
+pub struct RefData {
+    pub rate: u64,
+    pub resolve_time: u64,
+    pub request_id: u64,
+}
+```
 
 The `RefData` struct has the following fields:
 
@@ -62,15 +73,55 @@ The `RefData` struct has the following fields:
 - `resolve_time`: Represents the Unix time when the reference data was resolved.
 - `request_id`: Represents the ID of the request associated with the reference data.
 
-#### Reference Data
+#### [get_ref_data()](https://github.com/bandprotocol/band-std-reference-contracts-soroban/blob/2589e8211485af1ed2ac84f413bbe960df7af72d/src/contract.rs#L228)
 
-The `ReferenceData`struct is similar `RefData` but the quote asset can be specified. It includes information such as the rate of the pair, and the last update times of the base and quote assets. See `src/reference_data.rs`.
+This function is intended for obtaining reference data rate with Quote asset as USD.
+
+```rust!
+fn get_ref_data(env: Env, symbols: Vec<Symbol>) -> 
+Result<Vec<RefData>, StandardReferenceError>
+```
+
+##### Parameters
+`symbols`: A vector of symbols for which reference data is requested.
+
+##### Return Value
+The function returns a `Result` containing the reference data as a vector of `RefData` objects if successful. If there is an error during the execution of the function, an `Err` variant of `StandardReferenceError` is returned.
+
+#### [Reference Data](https://github.com/bandprotocol/band-std-reference-contracts-soroban/blob/main/src/reference_data.rs)
+
+The `ReferenceData`struct is similar `RefData` but the quote asset can be specified. It includes information such as the rate of the pair, and the last update times of the base and quote assets.
+
+```rust    
+pub struct ReferenceData {
+    pub rate: u128,
+    pub last_updated_base: u64,
+    pub last_updated_quote: u64,
+}
+```
 
 The `ReferenceData` struct has the following fields:
 
 - `rate`: Represents the rate of the symbol pair. For example, the rate of BTC/USD.
 - `last_updated_base`: Represents the Unix time when the base asset (e.g., BTC) was last updated.
 - `last_updated_quote`: Represents the Unix time when the quote asset (e.g., USD) was last updated.
+
+#### [get_reference_data()](https://github.com/bandprotocol/band-std-reference-contracts-soroban/blob/2589e8211485af1ed2ac84f413bbe960df7af72d/src/contract.rs#L252)
+
+This function is used for obtaining the reference data rate by specifying both Base and Quote assets.
+
+```rust!
+fn get_reference_data(
+        env: Env,
+        symbol_pairs: Vec<(Symbol, Symbol)>,
+    ) -> Result<Vec<ReferenceData>, StandardReferenceError>
+```
+
+##### Parameters
+`symbol_pairs`: A vector of symbol pairs (Base and Quote assets) for which reference data is requested.
+
+##### Return Value
+The function returns a `Result` containing the reference data as a vector of `ReferenceData` objects if successful. If there is an error during the execution of the function, an `Err` variant of `StandardReferenceError` is returned.
 
 ## Mock Consumer Contract
 
@@ -118,7 +169,7 @@ impl Demo {
 }
 ```
 
-After the `StandardReference` contract address is set, the BTC/USD price can be queried via the `demo()` function. An example of result from `demo()` would be: `30065900000000000000000`, which is equivalent to 30,065.90 USD. Note that the output rate is multiplied by `1e18`.
+After the `StandardReference` contract address is set, the BTC/USD price can be queried via the `demo()` function. An example of result from `demo()` would be: `30065900000000000000000`, which is equivalent to 30,065.90 USD.  Note that the output rate is multiplied by `1e18`.
 
 ## Setup - Build - Deploy
 ### Prerequisites
