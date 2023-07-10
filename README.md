@@ -79,5 +79,4 @@ The mock consumer contract provides an example of how to interact with a `Standa
 The mock consumer contract provides the following functionality:
 
 - `set_std_reference_address`: Sets the address of the `StandardReference` contract in the contract storage.
-
 - `get_price_of`: Retrieves the price of the specified symbol pair from the `StandardReference` contract. It uses the stored address of the `StandardReference` contract to create a client and fetch the reference data.
