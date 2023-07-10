@@ -189,7 +189,7 @@ cargo build --target wasm32-unknown-unknown --release
 
 A `.wasm` file will be outputted in the target directory. The `.wasm` file is the built contract. For example:
 ```
-target/wasm32-unknown-unknown/std_reference/demo.wasm
+target/wasm32-unknown-unknown/std_reference/std_reference.wasm
 ```
 
 ### Deploy the Contract
