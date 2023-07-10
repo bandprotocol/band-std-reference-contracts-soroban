@@ -1,6 +1,6 @@
 # Soroban - Band Standard Reference Contract
 
-This repository contains Rust implementation of a Band `StandardReference` Soroban smart contract. The contract provides functionality for querying prices (reference data) of supported symbols from the BandChain. It allows relayers to update and retrieve reference data for supported symbols.
+This repository contains a Rust implementation of the Band `StandardReference` Soroban smart contract. The contract provides functionality for querying prices (reference data) of supported symbols from the BandChain. It allows relayers to update and retrieve reference data for the supported symbols
 
 ## Components
 There are 2 key components in this repository:
