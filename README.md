@@ -80,3 +80,66 @@ The mock consumer contract provides the following functionality:
 
 - `set_std_reference_address`: Sets the address of the `StandardReference` contract in the contract storage.
 - `get_price_of`: Retrieves the price of the specified symbol pair from the `StandardReference` contract. It uses the stored address of the `StandardReference` contract to create a client and fetch the reference data.
+
+## Example Usage
+
+For example, if we want to query the price of BTC/USD, the demo contract below shows how this can be done.
+
+```rust!
+#![no_std]
+
+use soroban_sdk::{contractimpl, contracttype, Address, Env, Symbol, Vec};
+
+mod std_reference {
+    soroban_sdk::contractimport!(file = "../../dist/std_reference.wasm");
+}
+
+pub struct Demo;
+
+#[contractimpl]
+impl Demo {
+    pub fn set_std_reference_address(env: Env, std_reference_address: Address) {
+        env.storage()
+            .set(&DataKey::StdReferenceAddress, &std_reference_address);
+    }
+
+    pub fn demo(env: Env) -> u128 {
+        let addr = env
+            .storage()
+            .get_unchecked(&DataKey::StdReferenceAddress)
+            .unwrap();
+        let client = std_reference::Client::new(&env, &addr);
+        client
+            .get_reference_data(&Vec::from_array(&env, [("BTC", "USD")]))
+            .get_unchecked(0)
+            .unwrap()
+            .rate
+    }
+}
+```
+
+After the `StandardReference` contract address is set, the BTC/USD price can be queried via the `demo()` function. An example of result from `demo()` would be: `30065900000000000000000`, which is equivalent to 30,065.90 USD. Note that the output rate is multiplied by `1e18`.
+
+## Setup - Build - Deploy
+### Prerequisites
+The followings are prerequisites required to compile the contract:
+
+- A Rust toolchain
+- An editor that supports Rust
+- Soroban CLI
+
+Please refer to [Soroban Documentation](https://soroban.stellar.org/docs/getting-started/setup) for installation instructions.
+
+### Build the Contract
+To build a Soroban contract to deploy or run, use the `cargo build` command.
+```
+cargo build --target wasm32-unknown-unknown --release
+```
+
+A `.wasm` file will be outputted in the target directory. The `.wasm` file is the built contract. For example:
+```
+target/wasm32-unknown-unknown/std_reference/demo.wasm
+```
+
+### Deploy the Contract
+Please refer to [Local Deployment](https://soroban.stellar.org/docs/getting-started/deploy-to-a-local-network) and [Futurenet](https://soroban.stellar.org/docs/getting-started/deploy-to-futurenet) documentation for contract deployment instructions.
