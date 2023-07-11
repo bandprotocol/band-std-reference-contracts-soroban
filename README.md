@@ -182,9 +182,9 @@ The followings are prerequisites required to compile the contract:
 Please refer to [Soroban Documentation](https://soroban.stellar.org/docs/getting-started/setup) for installation instructions.
 
 ### Build the Contract
-To build a Soroban contract to deploy or run, use the `cargo build` command.
+To build a Soroban contract for deployment or local testing, use the following command:
 ```
-cargo build --target wasm32-unknown-unknown --release
+make all
 ```
 
 A `.wasm` file will be outputted in the target directory. The `.wasm` file is the built contract. For example:
