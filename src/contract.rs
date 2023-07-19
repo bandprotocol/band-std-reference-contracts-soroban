@@ -259,7 +259,7 @@ impl StandardReferenceTrait for StandardReference {
 mod tests {
     use core::ops::Mul;
 
-    use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec};
+    use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec, symbol_short};
 
     use crate::constant::{StandardReferenceError, E9};
     use crate::contract::StandardReference;
@@ -284,9 +284,9 @@ mod tests {
         let symbol_rates = Vec::from_array(
             env,
             [
-                (Symbol::short("AAA"), 1_000_000_000_000u64),
-                (Symbol::short("BBB"), 9_999_000_000_000u64),
-                (Symbol::short("CCC"), 1_234_000_000_000u64),
+                (symbol_short!("AAA"), 1_000_000_000_000u64),
+                (symbol_short!("BBB"), 9_999_000_000_000u64),
+                (symbol_short!("CCC"), 1_234_000_000_000u64),
             ],
         );
 
@@ -303,9 +303,9 @@ mod tests {
         let symbol_rates = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), 1_000_000_000u64),
-                (Symbol::short("BBB"), 6_900_000_000_000u64),
-                (Symbol::short("CCC"), 4_321_000_000_000u64),
+                (symbol_short!("AAA"), 1_000_000_000u64),
+                (symbol_short!("BBB"), 6_900_000_000_000u64),
+                (symbol_short!("CCC"), 4_321_000_000_000u64),
             ],
         );
         assert_eq!(true, contract.is_relayer(&admin));
@@ -321,9 +321,9 @@ mod tests {
         let symbol_rates = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), 1_000_000_000u64),
-                (Symbol::short("BBB"), 6_900_000_000_000u64),
-                (Symbol::short("CCC"), 4_321_000_000_000u64),
+                (symbol_short!("AAA"), 1_000_000_000u64),
+                (symbol_short!("BBB"), 6_900_000_000_000u64),
+                (symbol_short!("CCC"), 4_321_000_000_000u64),
             ],
         );
         assert_eq!(true, contract.is_relayer(&admin));
@@ -411,9 +411,9 @@ mod tests {
         let query_pairs = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), Symbol::short("USD")),
-                (Symbol::short("BBB"), Symbol::short("USD")),
-                (Symbol::short("CCC"), Symbol::short("USD")),
+                (symbol_short!("AAA"), symbol_short!("USD")),
+                (symbol_short!("BBB"), symbol_short!("USD")),
+                (symbol_short!("CCC"), symbol_short!("USD")),
             ],
         );
         let actual = contract.get_reference_data(&query_pairs);
@@ -480,9 +480,9 @@ mod tests {
         let query_pairs = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), Symbol::short("USD")),
-                (Symbol::short("BBB"), Symbol::short("USD")),
-                (Symbol::short("CCC"), Symbol::short("USD")),
+                (symbol_short!("AAA"), symbol_short!("USD")),
+                (symbol_short!("BBB"), symbol_short!("USD")),
+                (symbol_short!("CCC"), symbol_short!("USD")),
             ],
         );
         setup_force_relay(&env, &admin, &contract, &1u64);
@@ -513,15 +513,15 @@ mod tests {
         setup_relay(&env, &admin, &contract, &1000u64);
 
         // Delist AAA
-        contract.delist(&admin, &Vec::from_array(&env, [Symbol::short("AAA")]));
+        contract.delist(&admin, &Vec::from_array(&env, [symbol_short!("AAA")]));
 
         // Check if AAA is delisted
-        let query = Vec::from_array(&env, [(Symbol::short("AAA"), Symbol::short("USD"))]);
+        let query = Vec::from_array(&env, [(symbol_short!("AAA"), symbol_short!("USD"))]);
         let actual = env
             .try_invoke_contract::<Vec<ReferenceData>, StandardReferenceError>(
                 &contract_id,
                 &Symbol::new(&env, "get_reference_data"),
-                Vec::from_array(&env, [query.to_raw()]),
+                Vec::from_array(&env, [query.to_val()]),
             )
             .err()
             .unwrap()
