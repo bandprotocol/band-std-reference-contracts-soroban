@@ -1,4 +1,4 @@
-use soroban_sdk::{contractimpl, Address, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Symbol, Vec};
 
 use crate::admin::{has_admin, read_admin, write_admin};
 use crate::constant::StandardReferenceError;
@@ -41,6 +41,7 @@ pub trait StandardReferenceTrait {
     ) -> Result<Vec<ReferenceData>, StandardReferenceError>;
 }
 
+#[contract]
 pub struct StandardReference;
 
 #[contractimpl]
@@ -67,7 +68,7 @@ impl StandardReferenceTrait for StandardReference {
         let admin = read_admin(&env);
         admin.require_auth();
 
-        env.update_current_contract_wasm(&new_wasm_hash)
+        env.deployer().update_current_contract_wasm(new_wasm_hash)
     }
 
     fn version() -> u32 {
@@ -157,17 +158,13 @@ impl StandardReferenceTrait for StandardReference {
         }
         from.require_auth();
 
-        for symbol_rate in symbol_rates.iter() {
-            if let Ok((symbol, rate)) = symbol_rate {
-                if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
-                    ref_data
-                        .update(rate, resolve_time, request_id)
-                        .set(&env, symbol);
-                } else {
-                    RefData::new(rate, resolve_time, request_id).set(&env, symbol);
-                }
+        for (symbol, rate) in symbol_rates.iter() {
+            if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
+                ref_data
+                    .update(rate, resolve_time, request_id)
+                    .set(&env, symbol);
             } else {
-                panic!("Invalid symbol rate")
+                RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
     }
@@ -191,17 +188,13 @@ impl StandardReferenceTrait for StandardReference {
         }
         from.require_auth();
 
-        for symbol_rate in symbol_rates.iter() {
-            if let Ok((symbol, rate)) = symbol_rate {
-                if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
-                    ref_data
-                        .unchecked_update(rate, resolve_time, request_id)
-                        .set(&env, symbol);
-                } else {
-                    RefData::new(rate, resolve_time, request_id).set(&env, symbol);
-                }
+        for (symbol, rate) in symbol_rates.iter() {
+            if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
+                ref_data
+                    .unchecked_update(rate, resolve_time, request_id)
+                    .set(&env, symbol);
             } else {
-                panic!("Invalid symbol rate")
+                RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
     }
@@ -219,9 +212,7 @@ impl StandardReferenceTrait for StandardReference {
         from.require_auth();
 
         for symbol in symbols.iter() {
-            if let Ok(symbol) = symbol {
-                RefData::remove(&env, symbol);
-            }
+            RefData::remove(&env, symbol);
         }
     }
 
@@ -236,14 +227,10 @@ impl StandardReferenceTrait for StandardReference {
 
         let mut ref_data = Vec::new(&env);
         for symbol in symbols.iter() {
-            if let Ok(symbol) = symbol {
-                if let Ok(r) = read_ref_data(&env, symbol) {
-                    ref_data.push_back(r)
-                } else {
-                    return Err(StandardReferenceError::NoRefDataError);
-                }
+            if let Ok(r) = read_ref_data(&env, symbol) {
+                ref_data.push_back(r)
             } else {
-                return Err(StandardReferenceError::InvalidSymbolError);
+                return Err(StandardReferenceError::NoRefDataError);
             }
         }
         Ok(ref_data)
@@ -259,9 +246,7 @@ impl StandardReferenceTrait for StandardReference {
         }
 
         let mut reference_data = Vec::new(&env);
-        for symbol_pair in symbol_pairs.iter() {
-            let (base, quote) =
-                symbol_pair.map_err(|_| StandardReferenceError::InvalidSymbolPairError)?;
+        for (base, quote) in symbol_pairs.iter() {
             let base_ref = read_ref_data(&env, base)?;
             let quote_ref = read_ref_data(&env, quote)?;
             reference_data.push_back(ReferenceData::from_ref_data(base_ref, quote_ref)?);
