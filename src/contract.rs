@@ -203,6 +203,12 @@ impl StandardReferenceTrait for StandardReference {
                 RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
+
+        // The contract instance will be bumped to have a lifetime of at least 100 ledgers.
+        // If the lifetime is already more than 100 ledgers, this is a no-op. Otherwise,
+        // the lifetime is extended to 100 ledgers. This lifetime bump includes the contract
+        // instance itself and all entries in storage().instance()
+        env.storage().instance().bump(100)
     }
 
     fn delist(env: Env, from: Address, symbols: Vec<Symbol>) {
