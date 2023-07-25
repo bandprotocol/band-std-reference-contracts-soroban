@@ -2,7 +2,7 @@ use soroban_sdk::{Address, Env, Vec};
 
 use crate::storage_types::DataKey;
 
-// get_relayers returns the list of relaters
+// get_relayers returns the list of relayers
 pub fn is_relayer(env: &Env, address: &Address) -> bool {
     env.storage().instance().has(&DataKey::Relayer(address.clone()))
 }

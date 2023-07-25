@@ -100,7 +100,7 @@ impl StandardReferenceTrait for StandardReference {
 
         // Transfer admin and revoke relayer status
         write_admin(&env, &new_admin);
-        remove_relayers(&env, &Vec::from_array(&env, [new_admin.clone()]));
+        remove_relayers(&env, &Vec::from_array(&env, [current_admin.clone()]));
     }
 
     fn is_relayer(env: Env, address: Address) -> bool {
