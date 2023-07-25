@@ -27,13 +27,13 @@ impl RefData {
     pub fn set(&self, env: &Env, symbol: Symbol) -> &Self {
         // Do not allow USD to be overwritten
         if symbol != Symbol::new(env, "USD") {
-            env.storage().persistent().set(&DataKey::RefData(symbol), self);
+            env.storage().temporary().set(&DataKey::RefData(symbol), self);
         }
         self
     }
 
     pub fn remove(env: &Env, symbol: Symbol) {
-        env.storage().persistent().remove(&DataKey::RefData(symbol));
+        env.storage().temporary().remove(&DataKey::RefData(symbol));
     }
 
     pub fn update(&mut self, rate: u64, resolve_time: u64, request_id: u64) -> &Self {
@@ -68,7 +68,7 @@ pub fn read_ref_data(env: &Env, symbol: Symbol) -> Result<RefData, StandardRefer
         return Ok(RefData::usd(&env));
     }
 
-    let opt_ref_data: Option<RefData> = env.storage().persistent().get(&DataKey::RefData(symbol));
+    let opt_ref_data: Option<RefData> = env.storage().temporary().get(&DataKey::RefData(symbol));
 
     if let Some(ref_data) = opt_ref_data {
         return Ok(ref_data)

@@ -4,13 +4,13 @@ use crate::storage_types::DataKey;
 
 pub fn read_admin(env: &Env) -> Address {
     // This admin key has been set by owner and not expect to fail
-    env.storage().persistent().get(&DataKey::Admin).unwrap()
+    env.storage().instance().get(&DataKey::Admin).unwrap()
 }
 
 pub fn write_admin(env: &Env, admin_addr: &Address) {
-    env.storage().persistent().set(&DataKey::Admin, admin_addr);
+    env.storage().instance().set(&DataKey::Admin, admin_addr);
 }
 
 pub fn has_admin(env: &Env) -> bool {
-    env.storage().persistent().has(&DataKey::Admin)
+    env.storage().instance().has(&DataKey::Admin)
 }
