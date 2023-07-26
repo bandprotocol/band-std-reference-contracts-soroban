@@ -39,6 +39,7 @@ pub trait StandardReferenceTrait {
         env: Env,
         symbol_pair: Vec<(Symbol, Symbol)>,
     ) -> Result<Vec<ReferenceData>, StandardReferenceError>;
+    fn bump_instance_ledger(env: Env, instance_bump_amount: u32);
 }
 
 #[contract]
@@ -167,12 +168,6 @@ impl StandardReferenceTrait for StandardReference {
                 RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
-
-        // The contract instance will be bumped to have a lifetime of at least 100 ledgers.
-        // If the lifetime is already more than 100 ledgers, this is a no-op. Otherwise,
-        // the lifetime is extended to 100 ledgers. This lifetime bump includes the contract
-        // instance itself and all entries in storage().instance()
-        env.storage().instance().bump(100)
     }
 
     // Relays the symbol rates to the contract. The caller must be a relayer.
@@ -203,12 +198,6 @@ impl StandardReferenceTrait for StandardReference {
                 RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
-
-        // The contract instance will be bumped to have a lifetime of at least 100 ledgers.
-        // If the lifetime is already more than 100 ledgers, this is a no-op. Otherwise,
-        // the lifetime is extended to 100 ledgers. This lifetime bump includes the contract
-        // instance itself and all entries in storage().instance()
-        env.storage().instance().bump(100)
     }
 
     fn delist(env: Env, from: Address, symbols: Vec<Symbol>) {
@@ -264,6 +253,10 @@ impl StandardReferenceTrait for StandardReference {
             reference_data.push_back(ReferenceData::from_ref_data(base_ref, quote_ref)?);
         }
         Ok(reference_data)
+    }
+
+    fn bump_instance_ledger(env: Env, instance_bump_amount: u32) {
+        env.storage().instance().bump(instance_bump_amount)
     }
 }
 

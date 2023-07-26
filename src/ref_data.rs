@@ -2,6 +2,7 @@ use soroban_sdk::{contracttype, Env, Symbol};
 
 use crate::constant::{StandardReferenceError, E9};
 use crate::storage_types::DataKey;
+use crate::storage_types::TEMPORARY_BUMP_AMOUNT;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[contracttype]
@@ -26,9 +27,19 @@ impl RefData {
 
     pub fn set(&self, env: &Env, symbol: Symbol) -> &Self {
         // Do not allow USD to be overwritten
-        if symbol != Symbol::new(env, "USD") {
-            env.storage().temporary().set(&DataKey::RefData(symbol), self);
+        let overridable = symbol != Symbol::new(env, "USD");
+        let key = DataKey::RefData(symbol);
+
+        if overridable {
+            env.storage().temporary().set(&key, self);
+
+            // Bump the temporary storage
+            env.storage().temporary().bump(
+                &key,
+                TEMPORARY_BUMP_AMOUNT,
+            );
         }
+
         self
     }
 
