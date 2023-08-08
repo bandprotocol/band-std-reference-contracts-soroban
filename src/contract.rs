@@ -1,4 +1,4 @@
-use soroban_sdk::{contractimpl, Address, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Symbol, Vec};
 
 use crate::admin::{has_admin, read_admin, write_admin};
 use crate::constant::StandardReferenceError;
@@ -39,8 +39,10 @@ pub trait StandardReferenceTrait {
         env: Env,
         symbol_pair: Vec<(Symbol, Symbol)>,
     ) -> Result<Vec<ReferenceData>, StandardReferenceError>;
+    fn bump_ledger_instance(env: Env, bump_amount: u32);
 }
 
+#[contract]
 pub struct StandardReference;
 
 #[contractimpl]
@@ -67,7 +69,7 @@ impl StandardReferenceTrait for StandardReference {
         let admin = read_admin(&env);
         admin.require_auth();
 
-        env.update_current_contract_wasm(&new_wasm_hash)
+        env.deployer().update_current_contract_wasm(new_wasm_hash)
     }
 
     fn version() -> u32 {
@@ -99,7 +101,7 @@ impl StandardReferenceTrait for StandardReference {
 
         // Transfer admin and revoke relayer status
         write_admin(&env, &new_admin);
-        remove_relayers(&env, &Vec::from_array(&env, [new_admin.clone()]));
+        remove_relayers(&env, &Vec::from_array(&env, [current_admin.clone()]));
     }
 
     fn is_relayer(env: Env, address: Address) -> bool {
@@ -157,17 +159,13 @@ impl StandardReferenceTrait for StandardReference {
         }
         from.require_auth();
 
-        for symbol_rate in symbol_rates.iter() {
-            if let Ok((symbol, rate)) = symbol_rate {
-                if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
-                    ref_data
-                        .update(rate, resolve_time, request_id)
-                        .set(&env, symbol);
-                } else {
-                    RefData::new(rate, resolve_time, request_id).set(&env, symbol);
-                }
+        for (symbol, rate) in symbol_rates.iter() {
+            if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
+                ref_data
+                    .update(rate, resolve_time, request_id)
+                    .set(&env, symbol);
             } else {
-                panic!("Invalid symbol rate")
+                RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
     }
@@ -191,17 +189,13 @@ impl StandardReferenceTrait for StandardReference {
         }
         from.require_auth();
 
-        for symbol_rate in symbol_rates.iter() {
-            if let Ok((symbol, rate)) = symbol_rate {
-                if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
-                    ref_data
-                        .unchecked_update(rate, resolve_time, request_id)
-                        .set(&env, symbol);
-                } else {
-                    RefData::new(rate, resolve_time, request_id).set(&env, symbol);
-                }
+        for (symbol, rate) in symbol_rates.iter() {
+            if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
+                ref_data
+                    .unchecked_update(rate, resolve_time, request_id)
+                    .set(&env, symbol);
             } else {
-                panic!("Invalid symbol rate")
+                RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
     }
@@ -219,9 +213,7 @@ impl StandardReferenceTrait for StandardReference {
         from.require_auth();
 
         for symbol in symbols.iter() {
-            if let Ok(symbol) = symbol {
-                RefData::remove(&env, symbol);
-            }
+            RefData::remove(&env, symbol);
         }
     }
 
@@ -236,14 +228,10 @@ impl StandardReferenceTrait for StandardReference {
 
         let mut ref_data = Vec::new(&env);
         for symbol in symbols.iter() {
-            if let Ok(symbol) = symbol {
-                if let Ok(r) = read_ref_data(&env, symbol) {
-                    ref_data.push_back(r)
-                } else {
-                    return Err(StandardReferenceError::NoRefDataError);
-                }
+            if let Ok(r) = read_ref_data(&env, symbol) {
+                ref_data.push_back(r)
             } else {
-                return Err(StandardReferenceError::InvalidSymbolError);
+                return Err(StandardReferenceError::NoRefDataError);
             }
         }
         Ok(ref_data)
@@ -259,14 +247,16 @@ impl StandardReferenceTrait for StandardReference {
         }
 
         let mut reference_data = Vec::new(&env);
-        for symbol_pair in symbol_pairs.iter() {
-            let (base, quote) =
-                symbol_pair.map_err(|_| StandardReferenceError::InvalidSymbolPairError)?;
+        for (base, quote) in symbol_pairs.iter() {
             let base_ref = read_ref_data(&env, base)?;
             let quote_ref = read_ref_data(&env, quote)?;
             reference_data.push_back(ReferenceData::from_ref_data(base_ref, quote_ref)?);
         }
         Ok(reference_data)
+    }
+
+    fn bump_ledger_instance(env: Env, bump_amount: u32) {
+        env.storage().instance().bump(bump_amount)
     }
 }
 
@@ -274,7 +264,7 @@ impl StandardReferenceTrait for StandardReference {
 mod tests {
     use core::ops::Mul;
 
-    use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec};
+    use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec, symbol_short};
 
     use crate::constant::{StandardReferenceError, E9};
     use crate::contract::StandardReference;
@@ -299,9 +289,9 @@ mod tests {
         let symbol_rates = Vec::from_array(
             env,
             [
-                (Symbol::short("AAA"), 1_000_000_000_000u64),
-                (Symbol::short("BBB"), 9_999_000_000_000u64),
-                (Symbol::short("CCC"), 1_234_000_000_000u64),
+                (symbol_short!("AAA"), 1_000_000_000_000u64),
+                (symbol_short!("BBB"), 9_999_000_000_000u64),
+                (symbol_short!("CCC"), 1_234_000_000_000u64),
             ],
         );
 
@@ -318,9 +308,9 @@ mod tests {
         let symbol_rates = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), 1_000_000_000u64),
-                (Symbol::short("BBB"), 6_900_000_000_000u64),
-                (Symbol::short("CCC"), 4_321_000_000_000u64),
+                (symbol_short!("AAA"), 1_000_000_000u64),
+                (symbol_short!("BBB"), 6_900_000_000_000u64),
+                (symbol_short!("CCC"), 4_321_000_000_000u64),
             ],
         );
         assert_eq!(true, contract.is_relayer(&admin));
@@ -336,9 +326,9 @@ mod tests {
         let symbol_rates = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), 1_000_000_000u64),
-                (Symbol::short("BBB"), 6_900_000_000_000u64),
-                (Symbol::short("CCC"), 4_321_000_000_000u64),
+                (symbol_short!("AAA"), 1_000_000_000u64),
+                (symbol_short!("BBB"), 6_900_000_000_000u64),
+                (symbol_short!("CCC"), 4_321_000_000_000u64),
             ],
         );
         assert_eq!(true, contract.is_relayer(&admin));
@@ -426,9 +416,9 @@ mod tests {
         let query_pairs = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), Symbol::short("USD")),
-                (Symbol::short("BBB"), Symbol::short("USD")),
-                (Symbol::short("CCC"), Symbol::short("USD")),
+                (symbol_short!("AAA"), symbol_short!("USD")),
+                (symbol_short!("BBB"), symbol_short!("USD")),
+                (symbol_short!("CCC"), symbol_short!("USD")),
             ],
         );
         let actual = contract.get_reference_data(&query_pairs);
@@ -495,9 +485,9 @@ mod tests {
         let query_pairs = Vec::from_array(
             &env,
             [
-                (Symbol::short("AAA"), Symbol::short("USD")),
-                (Symbol::short("BBB"), Symbol::short("USD")),
-                (Symbol::short("CCC"), Symbol::short("USD")),
+                (symbol_short!("AAA"), symbol_short!("USD")),
+                (symbol_short!("BBB"), symbol_short!("USD")),
+                (symbol_short!("CCC"), symbol_short!("USD")),
             ],
         );
         setup_force_relay(&env, &admin, &contract, &1u64);
@@ -528,15 +518,15 @@ mod tests {
         setup_relay(&env, &admin, &contract, &1000u64);
 
         // Delist AAA
-        contract.delist(&admin, &Vec::from_array(&env, [Symbol::short("AAA")]));
+        contract.delist(&admin, &Vec::from_array(&env, [symbol_short!("AAA")]));
 
         // Check if AAA is delisted
-        let query = Vec::from_array(&env, [(Symbol::short("AAA"), Symbol::short("USD"))]);
+        let query = Vec::from_array(&env, [(symbol_short!("AAA"), symbol_short!("USD"))]);
         let actual = env
             .try_invoke_contract::<Vec<ReferenceData>, StandardReferenceError>(
                 &contract_id,
                 &Symbol::new(&env, "get_reference_data"),
-                Vec::from_array(&env, [query.to_raw()]),
+                Vec::from_array(&env, [query.to_val()]),
             )
             .err()
             .unwrap()

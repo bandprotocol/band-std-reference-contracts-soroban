@@ -2,6 +2,7 @@ use soroban_sdk::{contracttype, Env, Symbol};
 
 use crate::constant::{StandardReferenceError, E9};
 use crate::storage_types::DataKey;
+use crate::storage_types::TEMPORARY_BUMP_AMOUNT;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[contracttype]
@@ -26,14 +27,24 @@ impl RefData {
 
     pub fn set(&self, env: &Env, symbol: Symbol) -> &Self {
         // Do not allow USD to be overwritten
-        if symbol != Symbol::new(env, "USD") {
-            env.storage().set(&DataKey::RefData(symbol), self);
+        let overridable = symbol != Symbol::new(env, "USD");
+        let key = DataKey::RefData(symbol);
+
+        if overridable {
+            env.storage().temporary().set(&key, self);
+
+            // Bump the temporary storage
+            env.storage().temporary().bump(
+                &key,
+                TEMPORARY_BUMP_AMOUNT,
+            );
         }
+
         self
     }
 
     pub fn remove(env: &Env, symbol: Symbol) {
-        env.storage().remove(&DataKey::RefData(symbol));
+        env.storage().temporary().remove(&DataKey::RefData(symbol));
     }
 
     pub fn update(&mut self, rate: u64, resolve_time: u64, request_id: u64) -> &Self {
@@ -68,8 +79,10 @@ pub fn read_ref_data(env: &Env, symbol: Symbol) -> Result<RefData, StandardRefer
         return Ok(RefData::usd(&env));
     }
 
-    if let Some(ref_data) = env.storage().get(&DataKey::RefData(symbol)) {
-        ref_data.map_err(|_| StandardReferenceError::InvalidRefDataError)
+    let opt_ref_data: Option<RefData> = env.storage().temporary().get(&DataKey::RefData(symbol));
+
+    if let Some(ref_data) = opt_ref_data {
+        return Ok(ref_data)
     } else {
         Err(StandardReferenceError::NoRefDataError)
     }

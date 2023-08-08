@@ -8,8 +8,5 @@ pub const E18: u64 = 1_000_000_000_000_000_000;
 pub enum StandardReferenceError {
     NotInitializedError = 0,
     NoRefDataError = 1,
-    InvalidRefDataError = 2,
-    InvalidSymbolError = 3,
-    InvalidSymbolPairError = 4,
-    ArithmeticError = 5,
+    ArithmeticError = 2,
 }
