@@ -37,6 +37,7 @@ impl RefData {
             env.storage().temporary().bump(
                 &key,
                 TEMPORARY_BUMP_AMOUNT,
+                TEMPORARY_BUMP_AMOUNT * 7,
             );
         }
 

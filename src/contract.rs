@@ -39,7 +39,7 @@ pub trait StandardReferenceTrait {
         env: Env,
         symbol_pair: Vec<(Symbol, Symbol)>,
     ) -> Result<Vec<ReferenceData>, StandardReferenceError>;
-    fn bump_ledger_instance(env: Env, bump_amount: u32);
+    fn bump_ledger_instance(env: Env, low_expiration_watermark: u32, high_expiration_watermark: u32);
 }
 
 #[contract]
@@ -255,8 +255,8 @@ impl StandardReferenceTrait for StandardReference {
         Ok(reference_data)
     }
 
-    fn bump_ledger_instance(env: Env, bump_amount: u32) {
-        env.storage().instance().bump(bump_amount)
+    fn bump_ledger_instance(env: Env, low_expiration_watermark: u32, high_expiration_watermark: u32) {
+        env.storage().instance().bump(low_expiration_watermark, high_expiration_watermark)
     }
 }
 
