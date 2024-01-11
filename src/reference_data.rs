@@ -1,7 +1,7 @@
 use soroban_sdk::contracttype;
 
 use crate::constant::{StandardReferenceError, E18};
-use crate::ref_data::RefData;
+use crate::storage::ref_data::RefData;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[contracttype]
