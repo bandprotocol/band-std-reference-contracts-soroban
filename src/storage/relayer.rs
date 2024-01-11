@@ -1,6 +1,6 @@
 use soroban_sdk::{Address, Env, Vec};
 
-use crate::storage_types::DataKey;
+use crate::storage::storage_types::DataKey;
 
 // get_relayers returns the list of relayers
 pub fn is_relayer(env: &Env, address: &Address) -> bool {

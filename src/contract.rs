@@ -1,15 +1,16 @@
-use soroban_sdk::{contract, contractimpl, Address, BytesN, Env, Symbol, Vec};
+use soroban_sdk::{Address, BytesN, contract, contractimpl, Env, Symbol, Vec};
 
-use crate::admin::{has_admin, read_admin, write_admin};
 use crate::constant::StandardReferenceError;
-use crate::ref_data::{read_ref_data, RefData};
 use crate::reference_data::ReferenceData;
-use crate::relayer::{add_relayers, is_relayer, remove_relayers};
+use crate::storage::admin::{has_admin, read_admin, write_admin};
+use crate::storage::ref_data::{read_ref_data, RefData};
+use crate::storage::relayer::{add_relayers, is_relayer, remove_relayers};
+use crate::storage::ttl::{bump_instance_ttl_to_max, has_max_ttl, write_max_ttl};
 
 pub const VERSION: u32 = 1;
 
 pub trait StandardReferenceTrait {
-    fn init(env: Env, admin_addr: Address);
+    fn init(env: Env, admin_addr: Address, max_ttl: u32);
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>);
     fn version() -> u32;
     fn address(env: Env) -> Address;
@@ -39,7 +40,6 @@ pub trait StandardReferenceTrait {
         env: Env,
         symbol_pair: Vec<(Symbol, Symbol)>,
     ) -> Result<Vec<ReferenceData>, StandardReferenceError>;
-    fn bump_ledger_instance(env: Env, low_expiration_watermark: u32, high_expiration_watermark: u32);
 }
 
 #[contract]
@@ -49,12 +49,14 @@ pub struct StandardReference;
 impl StandardReferenceTrait for StandardReference {
     // Init initializes the contract with the given admin address where the admin address is also
     // added to the relayers list.
-    fn init(env: Env, admin_addr: Address) {
-        if has_admin(&env) {
+    fn init(env: Env, admin_addr: Address, max_ttl: u32) {
+        if has_admin(&env) && has_max_ttl(&env) {
             panic!("Already initialized");
         }
 
         write_admin(&env, &admin_addr);
+        write_max_ttl(&env, max_ttl);
+        bump_instance_ttl_to_max(&env);
         add_relayers(&env, &Vec::from_slice(&env, &[admin_addr]));
     }
 
@@ -99,8 +101,9 @@ impl StandardReferenceTrait for StandardReference {
         let current_admin = read_admin(&env);
         current_admin.require_auth();
 
-        // Transfer admin and revoke relayer status
+        // Transfer admin, bump instance ttl and revoke relayer status
         write_admin(&env, &new_admin);
+        bump_instance_ttl_to_max(&env);
         remove_relayers(&env, &Vec::from_array(&env, [current_admin.clone()]));
     }
 
@@ -124,6 +127,7 @@ impl StandardReferenceTrait for StandardReference {
         read_admin(&env).require_auth();
 
         add_relayers(&env, &addresses);
+        bump_instance_ttl_to_max(&env);
     }
 
     // Removes the given addresses from the relayers list.
@@ -168,6 +172,7 @@ impl StandardReferenceTrait for StandardReference {
                 RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
+        bump_instance_ttl_to_max(&env);
     }
 
     // Relays the symbol rates to the contract. The caller must be a relayer.
@@ -198,6 +203,7 @@ impl StandardReferenceTrait for StandardReference {
                 RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
+        bump_instance_ttl_to_max(&env);
     }
 
     fn delist(env: Env, from: Address, symbols: Vec<Symbol>) {
@@ -254,19 +260,16 @@ impl StandardReferenceTrait for StandardReference {
         }
         Ok(reference_data)
     }
-
-    fn bump_ledger_instance(env: Env, low_expiration_watermark: u32, high_expiration_watermark: u32) {
-        env.storage().instance().bump(low_expiration_watermark, high_expiration_watermark)
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use core::ops::Mul;
 
-    use soroban_sdk::{testutils::Address as _, Address, Env, Symbol, Vec, symbol_short};
+    use soroban_sdk::{Address, Env, Symbol, symbol_short, Vec};
+    use soroban_sdk::testutils::Address as _;
 
-    use crate::constant::{StandardReferenceError, E9};
+    use crate::constant::{E9, StandardReferenceError};
     use crate::contract::StandardReference;
     use crate::reference_data::ReferenceData;
     use crate::StandardReferenceClient;
@@ -281,7 +284,8 @@ mod tests {
         contract_id: &Address,
     ) -> StandardReferenceClient<'a> {
         let client = StandardReferenceClient::new(env, contract_id);
-        client.init(admin);
+        let max_ttl = 256u32;
+        client.init(admin, &max_ttl);
         client
     }
 
@@ -343,7 +347,7 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract_id = register_contract(&env);
         deploy_contract(&env, &admin, &contract_id);
 
@@ -358,11 +362,11 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract = deploy_contract(&env, &admin, &register_contract(&env));
 
         // Attempt to transfer admin
-        let new_admin = Address::random(&env);
+        let new_admin = Address::generate(&env);
         contract.transfer_admin(&new_admin);
         assert_eq!(contract.current_admin(), new_admin);
     }
@@ -374,11 +378,11 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract = deploy_contract(&env, &admin, &register_contract(&env));
 
         // Add relayers
-        let relayer = Address::random(&env);
+        let relayer = Address::generate(&env);
         contract.add_relayers(&Vec::from_array(&env, [relayer.clone()]));
 
         assert_eq!(true, contract.is_relayer(&admin));
@@ -392,7 +396,7 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract = deploy_contract(&env, &admin, &register_contract(&env));
 
         // Test if
@@ -408,7 +412,7 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract = deploy_contract(&env, &admin, &register_contract(&env));
 
         // Init relay
@@ -459,13 +463,14 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract_id = register_contract(&env);
         let contract = deploy_contract(&env, &admin, &contract_id);
 
         // Attempt to with random user, should panic
+        let random = Address::generate(&env);
         let symbol_rates = Vec::from_array(&env, [(Symbol::new(&env, "AAA"), 1000u64)]);
-        contract.relay(&Address::random(&env), &symbol_rates, &1000, &1);
+        contract.relay(&random, &symbol_rates, &1000, &1);
     }
 
     #[test]
@@ -475,7 +480,7 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract = deploy_contract(&env, &admin, &register_contract(&env));
 
         // First relay
@@ -510,7 +515,7 @@ mod tests {
         env.mock_all_auths();
 
         // Init the contract
-        let admin = Address::random(&env);
+        let admin = Address::generate(&env);
         let contract_id = register_contract(&env);
         let contract = deploy_contract(&env, &admin, &contract_id);
 
