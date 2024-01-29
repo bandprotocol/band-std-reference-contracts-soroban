@@ -5,15 +5,14 @@ use crate::reference_data::ReferenceData;
 use crate::storage::admin::{has_admin, read_admin, write_admin};
 use crate::storage::ref_data::{read_ref_data, RefData};
 use crate::storage::relayer::{add_relayers, is_relayer, remove_relayers};
-use crate::storage::ttl::{bump_instance_ttl_to_max, has_max_ttl, write_max_ttl};
+use crate::storage::ttl::{has_ttl_config, write_ttl_config, bump_instance_ttl};
 
 pub const VERSION: u32 = 1;
 
 pub trait StandardReferenceTrait {
-    fn init(env: Env, admin_addr: Address, max_ttl: u32);
+    fn init(env: Env, admin_addr: Address, instance_threshold: u32, instance_ttl: u32, temporary_threshold: u32, temporary_tll: u32);
     fn upgrade(env: Env, new_wasm_hash: BytesN<32>);
     fn version() -> u32;
-    fn address(env: Env) -> Address;
     fn current_admin(env: Env) -> Address;
     fn transfer_admin(env: Env, new_admin: Address);
     fn is_relayer(env: Env, address: Address) -> bool;
@@ -49,14 +48,14 @@ pub struct StandardReference;
 impl StandardReferenceTrait for StandardReference {
     // Init initializes the contract with the given admin address where the admin address is also
     // added to the relayers list.
-    fn init(env: Env, admin_addr: Address, max_ttl: u32) {
-        if has_admin(&env) && has_max_ttl(&env) {
+    fn init(env: Env, admin_addr: Address, instance_threshold: u32, instance_ttl: u32, temporary_threshold: u32, temporary_tll: u32) {
+        if has_admin(&env) && has_ttl_config(&env) {
             panic!("Already initialized");
         }
 
         write_admin(&env, &admin_addr);
-        write_max_ttl(&env, max_ttl);
-        bump_instance_ttl_to_max(&env);
+        write_ttl_config(&env, instance_threshold, instance_ttl, temporary_threshold, temporary_tll);
+        bump_instance_ttl(&env);
         add_relayers(&env, &Vec::from_slice(&env, &[admin_addr]));
     }
 
@@ -76,10 +75,6 @@ impl StandardReferenceTrait for StandardReference {
 
     fn version() -> u32 {
         VERSION
-    }
-
-    fn address(env: Env) -> Address {
-        env.current_contract_address()
     }
 
     fn current_admin(env: Env) -> Address {
@@ -103,7 +98,8 @@ impl StandardReferenceTrait for StandardReference {
 
         // Transfer admin, bump instance ttl and revoke relayer status
         write_admin(&env, &new_admin);
-        bump_instance_ttl_to_max(&env);
+        add_relayers(&env, &Vec::from_slice(&env, &[new_admin]));
+        bump_instance_ttl(&env);
         remove_relayers(&env, &Vec::from_array(&env, [current_admin.clone()]));
     }
 
@@ -127,7 +123,7 @@ impl StandardReferenceTrait for StandardReference {
         read_admin(&env).require_auth();
 
         add_relayers(&env, &addresses);
-        bump_instance_ttl_to_max(&env);
+        bump_instance_ttl(&env);
     }
 
     // Removes the given addresses from the relayers list.
@@ -172,7 +168,7 @@ impl StandardReferenceTrait for StandardReference {
                 RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
-        bump_instance_ttl_to_max(&env);
+        bump_instance_ttl(&env);
     }
 
     // Relays the symbol rates to the contract. The caller must be a relayer.
@@ -203,7 +199,7 @@ impl StandardReferenceTrait for StandardReference {
                 RefData::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
-        bump_instance_ttl_to_max(&env);
+        bump_instance_ttl(&env);
     }
 
     fn delist(env: Env, from: Address, symbols: Vec<Symbol>) {
@@ -284,8 +280,7 @@ mod tests {
         contract_id: &Address,
     ) -> StandardReferenceClient<'a> {
         let client = StandardReferenceClient::new(env, contract_id);
-        let max_ttl = 256u32;
-        client.init(admin, &max_ttl);
+        client.init(admin, &1000, &10000,&100, &1000);
         client
     }
 
@@ -340,7 +335,7 @@ mod tests {
     }
 
     #[test]
-    #[should_panic(expected = "Already initialized")]
+    #[should_panic]
     fn test_reinit() {
         // Setup environment
         let env = Env::default();

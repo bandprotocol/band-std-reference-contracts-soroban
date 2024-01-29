@@ -2,7 +2,7 @@ use soroban_sdk::{contracttype, Env, Symbol};
 
 use crate::constant::{StandardReferenceError, E9};
 use crate::storage::storage_types::DataKey;
-use crate::storage::ttl::read_max_ttl;
+use crate::storage::ttl::{bump_temporary_ttl};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[contracttype]
@@ -33,9 +33,7 @@ impl RefData {
 
         let key = DataKey::RefData(symbol);
         env.storage().temporary().set(&key, self);
-
-        let ttl = read_max_ttl(&env);
-        env.storage().temporary().extend_ttl(&key, ttl, ttl);
+        bump_temporary_ttl(env, &key);
 
         self
     }
