@@ -16,6 +16,10 @@ pub struct ReferenceData {
 
 impl ReferenceData {
     pub fn new(rate: u128, last_updated_base: u64, last_updated_quote: u64) -> Self {
+        if rate == 0 {
+            panic!("rate cannot be zero")
+        }
+
         ReferenceData {
             rate,
             last_updated_base,

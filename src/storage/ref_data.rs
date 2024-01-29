@@ -14,6 +14,10 @@ pub struct RefData {
 
 impl RefData {
     pub fn new(rate: u64, resolve_time: u64, request_id: u64) -> Self {
+        if rate == 0 {
+            panic!("rate cannot be zero")
+        }
+
         Self {
             rate,
             resolve_time,
