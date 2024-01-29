@@ -1,9 +1,9 @@
 use soroban_sdk::{Address, BytesN, contract, contractimpl, Env, Symbol, Vec};
 
 use crate::constant::StandardReferenceError;
-use crate::reference_data::ReferenceData;
+use crate::reference_data::ReferenceDatum;
 use crate::storage::admin::{has_admin, read_admin, write_admin};
-use crate::storage::ref_data::{read_ref_data, RefData};
+use crate::storage::ref_data::{read_ref_datum, RefDatum};
 use crate::storage::relayer::{add_relayers, is_relayer, remove_relayers};
 use crate::storage::ttl::{has_ttl_config, write_ttl_config, bump_instance_ttl};
 
@@ -27,18 +27,17 @@ pub trait StandardReferenceTrait {
     );
     fn force_relay(
         env: Env,
-        from: Address,
         symbol_rates: Vec<(Symbol, u64)>,
         resolve_time: u64,
         request_id: u64,
     );
-    fn delist(env: Env, from: Address, symbols: Vec<Symbol>);
+    fn delist(env: Env, symbols: Vec<Symbol>);
     fn get_ref_data(env: Env, symbols: Vec<Symbol>)
-        -> Result<Vec<RefData>, StandardReferenceError>;
+        -> Result<Vec<RefDatum>, StandardReferenceError>;
     fn get_reference_data(
         env: Env,
         symbol_pair: Vec<(Symbol, Symbol)>,
-    ) -> Result<Vec<ReferenceData>, StandardReferenceError>;
+    ) -> Result<Vec<ReferenceDatum>, StandardReferenceError>;
 }
 
 #[contract]
@@ -160,12 +159,12 @@ impl StandardReferenceTrait for StandardReference {
         from.require_auth();
 
         for (symbol, rate) in symbol_rates.iter() {
-            if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
-                ref_data
+            if let Ok(mut ref_datum) = read_ref_datum(&env, symbol.clone()) {
+                ref_datum
                     .update(rate, resolve_time, request_id)
                     .set(&env, symbol);
             } else {
-                RefData::new(rate, resolve_time, request_id).set(&env, symbol);
+                RefDatum::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
         bump_instance_ttl(&env);
@@ -174,7 +173,6 @@ impl StandardReferenceTrait for StandardReference {
     // Relays the symbol rates to the contract. The caller must be a relayer.
     fn force_relay(
         env: Env,
-        from: Address,
         symbol_rates: Vec<(Symbol, u64)>,
         resolve_time: u64,
         request_id: u64,
@@ -184,45 +182,41 @@ impl StandardReferenceTrait for StandardReference {
             panic!("Contract not initialized");
         }
 
-        // Check that the caller is a relayer
-        if !is_relayer(&env, &from) {
-            panic!("Not a relayer");
-        }
-        from.require_auth();
+        // Check that the caller is admin
+        let current_admin = read_admin(&env);
+        current_admin.require_auth();
 
         for (symbol, rate) in symbol_rates.iter() {
-            if let Ok(mut ref_data) = read_ref_data(&env, symbol.clone()) {
-                ref_data
+            if let Ok(mut ref_datum) = read_ref_datum(&env, symbol.clone()) {
+                ref_datum
                     .unchecked_update(rate, resolve_time, request_id)
                     .set(&env, symbol);
             } else {
-                RefData::new(rate, resolve_time, request_id).set(&env, symbol);
+                RefDatum::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
         bump_instance_ttl(&env);
     }
 
-    fn delist(env: Env, from: Address, symbols: Vec<Symbol>) {
+    fn delist(env: Env, symbols: Vec<Symbol>) {
         // Check that the contract is initialized
         if !has_admin(&env) {
             panic!("Contract not initialized");
         }
 
-        // Check that the caller is a relayer
-        if !is_relayer(&env, &from) {
-            panic!("Not a relayer");
-        }
-        from.require_auth();
+        // Check that the caller is admin
+        let current_admin = read_admin(&env);
+        current_admin.require_auth();
 
         for symbol in symbols.iter() {
-            RefData::remove(&env, symbol);
+            RefDatum::remove(&env, symbol);
         }
     }
 
     fn get_ref_data(
         env: Env,
         symbols: Vec<Symbol>,
-    ) -> Result<Vec<RefData>, StandardReferenceError> {
+    ) -> Result<Vec<RefDatum>, StandardReferenceError> {
         // Check that the contract is initialized
         if !has_admin(&env) {
             return Err(StandardReferenceError::NotInitializedError);
@@ -230,7 +224,7 @@ impl StandardReferenceTrait for StandardReference {
 
         let mut ref_data = Vec::new(&env);
         for symbol in symbols.iter() {
-            if let Ok(r) = read_ref_data(&env, symbol) {
+            if let Ok(r) = read_ref_datum(&env, symbol) {
                 ref_data.push_back(r)
             } else {
                 return Err(StandardReferenceError::NoRefDataError);
@@ -242,7 +236,7 @@ impl StandardReferenceTrait for StandardReference {
     fn get_reference_data(
         env: Env,
         symbol_pairs: Vec<(Symbol, Symbol)>,
-    ) -> Result<Vec<ReferenceData>, StandardReferenceError> {
+    ) -> Result<Vec<ReferenceDatum>, StandardReferenceError> {
         // Check that the contract is initialized
         if !has_admin(&env) {
             return Err(StandardReferenceError::NotInitializedError);
@@ -250,9 +244,9 @@ impl StandardReferenceTrait for StandardReference {
 
         let mut reference_data = Vec::new(&env);
         for (base, quote) in symbol_pairs.iter() {
-            let base_ref = read_ref_data(&env, base)?;
-            let quote_ref = read_ref_data(&env, quote)?;
-            reference_data.push_back(ReferenceData::from_ref_data(base_ref, quote_ref)?);
+            let base_ref = read_ref_datum(&env, base)?;
+            let quote_ref = read_ref_datum(&env, quote)?;
+            reference_data.push_back(ReferenceDatum::from_ref_datum(base_ref, quote_ref)?);
         }
         Ok(reference_data)
     }
@@ -267,7 +261,7 @@ mod tests {
 
     use crate::constant::{E9, StandardReferenceError};
     use crate::contract::StandardReference;
-    use crate::reference_data::ReferenceData;
+    use crate::reference_data::ReferenceDatum;
     use crate::StandardReferenceClient;
 
     fn register_contract(env: &Env) -> Address {
@@ -331,7 +325,7 @@ mod tests {
             ],
         );
         assert_eq!(true, contract.is_relayer(&admin));
-        contract.force_relay(&admin, &symbol_rates, &time, &2);
+        contract.force_relay(&symbol_rates, &time, &2);
     }
 
     #[test]
@@ -424,9 +418,9 @@ mod tests {
         let expected = Vec::from_array(
             &env,
             [
-                ReferenceData::new(1_000_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
-                ReferenceData::new(9_999_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
-                ReferenceData::new(1_234_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
+                ReferenceDatum::new(1_000_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
+                ReferenceDatum::new(9_999_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
+                ReferenceDatum::new(1_234_000_000_000u128.mul(E9 as u128), 1000u64, 0u64),
             ],
         );
         assert_eq!(expected, actual);
@@ -442,9 +436,9 @@ mod tests {
         let expected = Vec::from_array(
             &env,
             [
-                ReferenceData::new(1_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
-                ReferenceData::new(6_900_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
-                ReferenceData::new(4_321_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
+                ReferenceDatum::new(1_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
+                ReferenceDatum::new(6_900_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
+                ReferenceDatum::new(4_321_000_000_000u128.mul(E9 as u128), 1337u64, 0u64),
             ],
         );
         assert_eq!(expected, actual);
@@ -495,9 +489,9 @@ mod tests {
         let expected = Vec::from_array(
             &env,
             [
-                ReferenceData::new(1_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
-                ReferenceData::new(6_900_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
-                ReferenceData::new(4_321_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
+                ReferenceDatum::new(1_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
+                ReferenceDatum::new(6_900_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
+                ReferenceDatum::new(4_321_000_000_000u128.mul(E9 as u128), 1u64, 0u64),
             ],
         );
         assert_eq!(expected, actual);
@@ -518,12 +512,12 @@ mod tests {
         setup_relay(&env, &admin, &contract, &1000u64);
 
         // Delist AAA
-        contract.delist(&admin, &Vec::from_array(&env, [symbol_short!("AAA")]));
+        contract.delist(&Vec::from_array(&env, [symbol_short!("AAA")]));
 
         // Check if AAA is delisted
         let query = Vec::from_array(&env, [(symbol_short!("AAA"), symbol_short!("USD"))]);
         let actual = env
-            .try_invoke_contract::<Vec<ReferenceData>, StandardReferenceError>(
+            .try_invoke_contract::<Vec<ReferenceDatum>, StandardReferenceError>(
                 &contract_id,
                 &Symbol::new(&env, "get_reference_data"),
                 Vec::from_array(&env, [query.to_val()]),

@@ -6,13 +6,13 @@ use crate::storage::ttl::{bump_temporary_ttl};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[contracttype]
-pub struct RefData {
+pub struct RefDatum {
     pub rate: u64,
     pub resolve_time: u64,
     pub request_id: u64,
 }
 
-impl RefData {
+impl RefDatum {
     pub fn new(rate: u64, resolve_time: u64, request_id: u64) -> Self {
         if rate == 0 {
             panic!("rate cannot be zero")
@@ -73,12 +73,12 @@ impl RefData {
     }
 }
 
-pub fn read_ref_data(env: &Env, symbol: Symbol) -> Result<RefData, StandardReferenceError> {
+pub fn read_ref_datum(env: &Env, symbol: Symbol) -> Result<RefDatum, StandardReferenceError> {
     if symbol == Symbol::new(&env, "USD") {
-        return Ok(RefData::usd(&env));
+        return Ok(RefDatum::usd(&env));
     }
 
-    let opt_ref_data: Option<RefData> = env.storage().temporary().get(&DataKey::RefData(symbol));
+    let opt_ref_data: Option<RefDatum> = env.storage().temporary().get(&DataKey::RefData(symbol));
 
     if let Some(ref_data) = opt_ref_data {
         return Ok(ref_data)
