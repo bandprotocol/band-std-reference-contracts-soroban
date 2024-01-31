@@ -4,6 +4,8 @@ use crate::constant::{StandardReferenceError, E9};
 use crate::storage::storage_types::DataKey;
 use crate::storage::ttl::{bump_temporary_ttl};
 
+pub const OFFSET: u64 = 3600;
+
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[contracttype]
 pub struct RefDatum {
@@ -46,12 +48,12 @@ impl RefDatum {
         env.storage().temporary().remove(&DataKey::RefData(symbol));
     }
 
-    pub fn update(&mut self, rate: u64, resolve_time: u64, request_id: u64) -> &Self {
+    pub fn update(&mut self, env: &Env, rate: u64, resolve_time: u64, request_id: u64) -> &Self {
         if rate == 0 {
             panic!("rate cannot be zero")
         }
 
-        if self.resolve_time < resolve_time {
+        if self.resolve_time < resolve_time && resolve_time < env.ledger().timestamp() + OFFSET {
             self.rate = rate;
             self.resolve_time = resolve_time;
             self.request_id = request_id;
