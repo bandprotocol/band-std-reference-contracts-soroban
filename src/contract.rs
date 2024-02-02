@@ -5,7 +5,7 @@ use crate::reference_data::ReferenceDatum;
 use crate::storage::admin::{has_admin, read_admin, write_admin};
 use crate::storage::ref_data::{read_ref_datum, RefDatum};
 use crate::storage::relayer::{add_relayers, is_relayer, remove_relayers};
-use crate::storage::ttl::{has_ttl_config, write_ttl_config, bump_instance_ttl};
+use crate::storage::ttl::{bump_instance_ttl, has_ttl_config, write_ttl_config};
 
 pub const VERSION: u32 = 1;
 
