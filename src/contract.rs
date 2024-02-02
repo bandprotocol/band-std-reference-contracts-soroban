@@ -54,8 +54,10 @@ impl StandardReferenceTrait for StandardReference {
 
         write_admin(&env, &admin_addr);
         write_ttl_config(&env, instance_threshold, instance_ttl, temporary_threshold, temporary_tll);
-        bump_instance_ttl(&env);
+
         add_relayers(&env, &Vec::from_slice(&env, &[admin_addr]));
+
+        bump_instance_ttl(&env);
     }
 
     // Upgrade upgrades the contract to the new wasm code at the given wasm hash.
@@ -98,8 +100,10 @@ impl StandardReferenceTrait for StandardReference {
         // Transfer admin, bump instance ttl and revoke relayer status
         write_admin(&env, &new_admin);
         add_relayers(&env, &Vec::from_slice(&env, &[new_admin]));
-        bump_instance_ttl(&env);
+
         remove_relayers(&env, &Vec::from_array(&env, [current_admin.clone()]));
+
+        bump_instance_ttl(&env);
     }
 
     fn is_relayer(env: Env, address: Address) -> bool {
@@ -122,6 +126,7 @@ impl StandardReferenceTrait for StandardReference {
         read_admin(&env).require_auth();
 
         add_relayers(&env, &addresses);
+
         bump_instance_ttl(&env);
     }
 
@@ -161,12 +166,13 @@ impl StandardReferenceTrait for StandardReference {
         for (symbol, rate) in symbol_rates.iter() {
             if let Ok(mut ref_datum) = read_ref_datum(&env, symbol.clone()) {
                 ref_datum
-                    .update(rate, resolve_time, request_id)
+                    .update(&env, rate, resolve_time, request_id)
                     .set(&env, symbol);
             } else {
                 RefDatum::new(rate, resolve_time, request_id).set(&env, symbol);
             }
         }
+
         bump_instance_ttl(&env);
     }
 
