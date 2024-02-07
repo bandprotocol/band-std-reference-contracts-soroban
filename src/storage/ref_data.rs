@@ -2,18 +2,24 @@ use soroban_sdk::{contracttype, Env, Symbol};
 
 use crate::constant::{StandardReferenceError, E9};
 use crate::storage::storage_types::DataKey;
-use crate::storage::ttl::read_max_ttl;
+use crate::storage::ttl::{bump_temporary_ttl};
+
+pub const OFFSET: u64 = 3600;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 #[contracttype]
-pub struct RefData {
+pub struct RefDatum {
     pub rate: u64,
     pub resolve_time: u64,
     pub request_id: u64,
 }
 
-impl RefData {
+impl RefDatum {
     pub fn new(rate: u64, resolve_time: u64, request_id: u64) -> Self {
+        if rate == 0 {
+            panic!("rate cannot be zero")
+        }
+
         Self {
             rate,
             resolve_time,
@@ -33,9 +39,7 @@ impl RefData {
 
         let key = DataKey::RefData(symbol);
         env.storage().temporary().set(&key, self);
-
-        let ttl = read_max_ttl(&env);
-        env.storage().temporary().extend_ttl(&key, ttl, ttl);
+        bump_temporary_ttl(env, &key);
 
         self
     }
@@ -44,12 +48,12 @@ impl RefData {
         env.storage().temporary().remove(&DataKey::RefData(symbol));
     }
 
-    pub fn update(&mut self, rate: u64, resolve_time: u64, request_id: u64) -> &Self {
+    pub fn update(&mut self, env: &Env, rate: u64, resolve_time: u64, request_id: u64) -> &Self {
         if rate == 0 {
             panic!("rate cannot be zero")
         }
 
-        if self.resolve_time < resolve_time {
+        if self.resolve_time < resolve_time && resolve_time < env.ledger().timestamp() + OFFSET {
             self.rate = rate;
             self.resolve_time = resolve_time;
             self.request_id = request_id;
@@ -71,12 +75,12 @@ impl RefData {
     }
 }
 
-pub fn read_ref_data(env: &Env, symbol: Symbol) -> Result<RefData, StandardReferenceError> {
+pub fn read_ref_datum(env: &Env, symbol: Symbol) -> Result<RefDatum, StandardReferenceError> {
     if symbol == Symbol::new(&env, "USD") {
-        return Ok(RefData::usd(&env));
+        return Ok(RefDatum::usd(&env));
     }
 
-    let opt_ref_data: Option<RefData> = env.storage().temporary().get(&DataKey::RefData(symbol));
+    let opt_ref_data: Option<RefDatum> = env.storage().temporary().get(&DataKey::RefData(symbol));
 
     if let Some(ref_data) = opt_ref_data {
         return Ok(ref_data)

@@ -22,7 +22,6 @@ The `StandardReferenceTrait` trait defines the contract interface, which include
 - `init`: Initializes the contract with the given admin address and adds the admin address to the relayers list.
 - `upgrade`: Upgrades the contract to a new wasm code at the provided wasm hash.
 - `version`: Returns the version of the contract.
-- `address`: Returns the address of the contract.
 - `current_admin`: Returns the current admin address.
 - `transfer_admin`: Transfers the admin role to the new admin address and revokes relayer status from the old admin.
 - `is_relayer`: Checks if the given address is a relayer.

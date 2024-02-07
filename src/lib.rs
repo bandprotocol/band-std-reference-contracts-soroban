@@ -1,5 +1,7 @@
 #![no_std]
 
+extern crate alloc;
+
 pub use crate::contract::StandardReferenceClient;
 
 mod constant;

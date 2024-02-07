@@ -4,7 +4,7 @@ use soroban_sdk::{contracttype, Address, Symbol};
 #[contracttype]
 pub enum DataKey {
     Admin,
-    MaxTTL,
+    TTLConfig,
     Relayer(Address),
     RefData(Symbol),
 }
