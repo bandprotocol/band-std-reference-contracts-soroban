@@ -5,7 +5,7 @@ use crate::reference_data::ReferenceDatum;
 use crate::storage::admin::{has_admin, read_admin, write_admin};
 use crate::storage::ref_data::{read_ref_datum, RefDatum};
 use crate::storage::relayer::{add_relayers, is_relayer, remove_relayers};
-use crate::storage::ttl::{bump_instance_ttl, has_ttl_config, write_ttl_config};
+use crate::storage::ttl::{bump_instance_ttl, has_ttl_config, read_ttl_config, TTLConfig, write_ttl_config};
 
 pub const VERSION: u32 = 1;
 
@@ -15,6 +15,8 @@ pub trait StandardReferenceTrait {
     fn version() -> u32;
     fn current_admin(env: Env) -> Address;
     fn transfer_admin(env: Env, new_admin: Address);
+    fn current_ttl_config(env: Env) -> TTLConfig;
+    fn update_ttl_config(env: Env, instance_threshold: u32, instance_ttl: u32, temporary_threshold: u32, temporary_ttl: u32);
     fn is_relayer(env: Env, address: Address) -> bool;
     fn add_relayers(env: Env, addresses: Vec<Address>);
     fn remove_relayers(env: Env, addresses: Vec<Address>);
@@ -104,6 +106,19 @@ impl StandardReferenceTrait for StandardReference {
         remove_relayers(&env, &Vec::from_array(&env, [current_admin.clone()]));
 
         bump_instance_ttl(&env);
+    }
+
+    fn current_ttl_config(env: Env) -> TTLConfig {
+        read_ttl_config(&env)
+    }
+
+    fn update_ttl_config(env: Env, instance_threshold: u32, instance_ttl: u32, temporary_threshold: u32, temporary_ttl: u32) {
+        // Check that the contract is initialized
+        if !has_admin(&env) {
+            panic!("Contract not initialized");
+        }
+
+        write_ttl_config(&env, instance_threshold, instance_ttl, temporary_threshold, temporary_ttl);
     }
 
     fn is_relayer(env: Env, address: Address) -> bool {

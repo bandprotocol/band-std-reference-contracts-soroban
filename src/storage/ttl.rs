@@ -44,15 +44,18 @@ pub fn has_ttl_config(env: &Env) -> bool {
 }
 
 pub fn read_instance_ttl_config(env: &Env) -> (u32, u32) {
-    if let Some(config) = env.storage().instance().get::<_, TTLConfig>(&DataKey::TTLConfig) {
-        return (config.instance_threshold, config.instance_ttl)
-    }
-    panic!("TTLConfig not set")
+    let config = read_ttl_config(env);
+    (config.instance_threshold, config.instance_ttl)
 }
 
-pub fn read_temporary_config(env: &Env) -> (u32, u32) {
+pub fn read_temporary_ttl_config(env: &Env) -> (u32, u32) {
+    let config = read_ttl_config(env);
+    (config.temporary_threshold, config.temporary_ttl)
+}
+
+pub fn read_ttl_config(env: &Env) -> TTLConfig {
     if let Some(config) = env.storage().instance().get::<_, TTLConfig>(&DataKey::TTLConfig) {
-        return (config.temporary_threshold, config.temporary_ttl)
+        return config
     }
     panic!("TTLConfig not set")
 }
@@ -65,6 +68,6 @@ pub fn bump_instance_ttl(env: &Env) {
 pub fn bump_temporary_ttl<K>(env: &Env, key: &K)
     where K: IntoVal<Env, Val>,
 {
-    let (threshold, ttl) = read_temporary_config(&env);
+    let (threshold, ttl) = read_temporary_ttl_config(&env);
     env.storage().temporary().extend_ttl(key, threshold, ttl);
 }
