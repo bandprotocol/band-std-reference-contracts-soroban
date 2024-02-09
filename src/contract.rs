@@ -118,6 +118,10 @@ impl StandardReferenceTrait for StandardReference {
             panic!("Contract not initialized");
         }
 
+        // Check that the caller is the admin
+        let current_admin = read_admin(&env);
+        current_admin.require_auth();
+
         write_ttl_config(&env, instance_threshold, instance_ttl, temporary_threshold, temporary_ttl);
     }
 
@@ -284,6 +288,7 @@ mod tests {
     use crate::contract::StandardReference;
     use crate::reference_data::ReferenceDatum;
     use crate::StandardReferenceClient;
+    use crate::storage::ttl::TTLConfig;
 
     fn register_contract(env: &Env) -> Address {
         env.register_contract(None, StandardReference {})
@@ -379,6 +384,23 @@ mod tests {
         let new_admin = Address::generate(&env);
         contract.transfer_admin(&new_admin);
         assert_eq!(contract.current_admin(), new_admin);
+    }
+
+    #[test]
+    fn test_update_ttl_config() {
+        // Setup environment
+        let env = Env::default();
+        env.mock_all_auths();
+
+        // Init the contract
+        let admin = Address::generate(&env);
+        let contract = deploy_contract(&env, &admin, &register_contract(&env));
+
+        // Attempt to modify ttl config
+        let new_config = TTLConfig::new(16, 1000, 16, 1000);
+        contract.update_ttl_config(&new_config.instance_threshold, &new_config.instance_ttl, &new_config.temporary_threshold, &new_config.temporary_ttl);
+
+        assert_eq!(contract.current_ttl_config(), new_config);
     }
 
     #[test]
